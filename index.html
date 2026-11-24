@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Ablage">
+<meta name="theme-color" content="#f4f1ea" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#1c1b19" media="(prefers-color-scheme: dark)">
+<meta name="referrer" content="no-referrer">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<title>Ablage</title>
+<style>
+/* Ablage Web 1.0 – Nur-Lese-Ansicht der Ablage für iPhone/iPad (Pendant zur Ablage.app 1.10) */
+:root{
+  --bg:#f4f1ea; --panel:#fffdf8; --text:#2b2a27; --muted:#77736a; --line:#e2ddd2;
+  --board1:#c9b89a; --board2:#a8936f; --accent:#185FA5; --danger:#A32D2D;
+  --shadow:0 1px 2px rgba(0,0,0,.08),0 2px 8px rgba(0,0,0,.06);
+}
+@media (prefers-color-scheme: dark){
+  :root{ --bg:#1c1b19; --panel:#262522; --text:#ecebe6; --muted:#a19d93; --line:#3a3833;
+    --board1:#5a4c38; --board2:#3f3527; --accent:#6aa7e6; --danger:#e07a7a;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 2px 8px rgba(0,0,0,.3); }
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--text);
+  font:16px/1.35 -apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",Arial,sans-serif}
+body{padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);min-height:100vh}
+button{font:inherit;color:inherit}
+a{color:var(--accent)}
+.hidden{display:none!important}
+
+/* Kopfzeile */
+header{position:sticky;top:0;z-index:5;background:var(--bg);padding:10px 14px 8px;border-bottom:1px solid var(--line)}
+.top{display:flex;align-items:center;gap:8px;min-height:36px}
+.top h1{flex:1;margin:0;font-size:20px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.iconbtn{border:0;background:transparent;padding:6px 8px;border-radius:8px;font-size:17px;color:var(--accent);cursor:pointer}
+.iconbtn:active{background:var(--line)}
+.crumbs{font-size:13px;color:var(--muted);margin:2px 0 6px;white-space:nowrap;overflow-x:auto;scrollbar-width:none}
+.crumbs::-webkit-scrollbar{display:none}
+.crumbs a{color:var(--muted);text-decoration:none}
+.crumbs a:active{color:var(--accent)}
+.search{display:flex;gap:6px}
+.search input{flex:1;min-width:0;border:1px solid var(--line);background:var(--panel);color:var(--text);
+  border-radius:10px;padding:9px 12px;font-size:16px;outline:none;-webkit-appearance:none}
+.search input:focus{border-color:var(--accent)}
+
+main{padding:10px 12px 40px}
+.section{font-size:13px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin:14px 4px 6px}
+
+/* Regal mit Ordnerrücken */
+.shelf{margin:4px 0 14px}
+.row{display:flex;gap:6px;align-items:flex-end;padding:0 8px;min-height:20px}
+.board{height:12px;margin:0 0 16px;border-radius:2px;background:linear-gradient(var(--board1),var(--board2));box-shadow:0 3px 4px rgba(0,0,0,.18)}
+.spine{width:50px;height:214px;flex:0 0 50px;border-radius:5px 5px 2px 2px;border:1.5px solid var(--stroke);
+  background:var(--fill);color:var(--ink);display:flex;flex-direction:column;align-items:center;
+  padding:8px 0 10px;cursor:pointer;box-shadow:var(--shadow);transition:transform .12s;position:relative;overflow:hidden}
+.spine.unter{height:176px}
+.spine:active{transform:translateY(-6px)}
+.spine .sym{font-size:21px;line-height:1;height:24px;margin-bottom:6px;filter:saturate(.9)}
+.spine .lbl{flex:1;min-height:0;width:100%;display:flex;justify-content:center;writing-mode:vertical-rl;transform:rotate(180deg);
+  font-weight:650;font-size:13.5px;line-height:1.12;overflow:hidden;text-align:center;word-break:break-word;hyphens:auto}
+.spine .ring{width:16px;height:16px;border-radius:50%;border:2px solid var(--stroke);opacity:.55;margin-top:6px;flex:0 0 16px}
+.spine.unter .ring{display:none}
+
+/* Dokumentliste */
+.list{background:var(--panel);border-radius:12px;box-shadow:var(--shadow);overflow:hidden}
+.item{display:flex;align-items:center;gap:12px;padding:10px 12px;border-bottom:1px solid var(--line);cursor:pointer}
+.item:last-child{border-bottom:0}
+.item:active{background:var(--line)}
+.doc{width:34px;height:42px;flex:0 0 34px;border-radius:4px;border:1.5px solid var(--danger);display:flex;align-items:flex-end;
+  justify-content:center;font-size:9px;font-weight:700;color:var(--danger);padding-bottom:4px;background:var(--bg)}
+.doc.other{border-color:var(--muted);color:var(--muted)}
+.folderico{width:34px;height:42px;flex:0 0 34px;display:flex;align-items:center;justify-content:center;font-size:24px}
+.meta{flex:1;min-width:0}
+.name{font-size:15px;word-break:break-word}
+.sub{font-size:12.5px;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chev{color:var(--muted);font-size:18px}
+.toolbar{display:flex;justify-content:space-between;align-items:center;margin:14px 4px 6px}
+.toolbar .section{margin:0}
+.seg{display:flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{border:0;background:var(--panel);padding:4px 10px;font-size:13px;color:var(--muted)}
+.seg button.on{background:var(--accent);color:#fff}
+.empty,.note{color:var(--muted);text-align:center;padding:28px 16px;font-size:15px}
+.err{background:rgba(163,45,45,.1);color:var(--danger);border-radius:10px;padding:10px 12px;margin:10px 0;font-size:14px}
+.foot{color:var(--muted);font-size:12px;text-align:center;margin-top:24px}
+.foot button{border:0;background:none;color:var(--accent);font-size:12px;padding:4px}
+
+/* Anmeldung */
+.login{max-width:420px;margin:12vh auto 0;text-align:center;padding:0 20px}
+.login .logo{font-size:56px}
+.login h2{margin:8px 0 6px}
+.login p{color:var(--muted);font-size:15px}
+.primary{display:inline-block;border:0;border-radius:12px;background:var(--accent);color:#fff;font-weight:600;
+  padding:13px 22px;font-size:17px;text-decoration:none;cursor:pointer;margin-top:8px}
+.primary[aria-disabled="true"]{opacity:.45;pointer-events:none}
+.secondary{display:inline-block;border:1px solid var(--accent);border-radius:12px;background:transparent;color:var(--accent);
+  font-weight:600;padding:12px 20px;font-size:17px;text-decoration:none;cursor:pointer}
+.secondary[aria-disabled="true"]{opacity:.45;pointer-events:none}
+
+/* Dokument-Blatt */
+.veil{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:20}
+.sheet{position:fixed;left:0;right:0;bottom:0;z-index:21;background:var(--panel);border-radius:16px 16px 0 0;
+  padding:10px 18px calc(20px + env(safe-area-inset-bottom));box-shadow:0 -4px 20px rgba(0,0,0,.2);max-width:640px;margin:0 auto}
+.grab{width:40px;height:5px;border-radius:3px;background:var(--line);margin:0 auto 12px}
+.sheet h3{margin:0 0 4px;font-size:17px;word-break:break-word}
+.sheet .sub{white-space:normal}
+.actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:16px}
+.actions .primary,.actions .secondary{margin:0;text-align:center;font-size:16px;padding:12px 8px}
+.actions .wide{grid-column:1/3}
+.spinner{display:inline-block;width:14px;height:14px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;
+  animation:spin .8s linear infinite;vertical-align:-2px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading{color:var(--muted);text-align:center;padding:30px}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+"use strict";
+/* ===================== Einstellungen ===================== */
+const VERSION = "1.2";
+// App-Key der Dropbox-App „Ablage“ (dropbox.com/developers → App → Settings → App key). Der Key ist nicht geheim.
+const APP_KEY = "mzxmygsbe6ixqm1";
+const SOFTWARE_DIR = "/090_software/software/Ablage-Automatik";
+const DEMO = new URLSearchParams(location.search).has("demo");
+
+// 1.2: Standardtitel, -auswahl und -aussehen der Hauptablagen stehen NICHT im öffentlichen Code,
+// sondern in Ablage-Web.json im Dropbox-Softwareordner (wird erst nach der Anmeldung gelesen).
+let STANDARD_TITEL = {}, STANDARD_AUSWAHL = [], STANDARD_LOOK = {};
+// Farben und Symbole wie Ablage.app 1.7+ (FolderStyle)
+const PALETTEN = {
+  grau:["#F1EFE8","#5F5E5A","#444441"], gruen:["#EAF3DE","#3B6D11","#27500A"], gelb:["#FAEEDA","#854F0B","#633806"],
+  violett:["#EEEDFE","#534AB7","#3C3489"], blau:["#E6F1FB","#185FA5","#0C447C"], rot:["#FCEBEB","#A32D2D","#791F1F"],
+  rotbraun:["#FAECE7","#993C1D","#712B13"], petrol:["#E1F5EE","#0F6E56","#085041"], rosa:["#FBEAF0","#993556","#72243E"]
+};
+
+// SF-Symbole der Mac-App → Emoji
+const SYMBOLE = {
+  "folder":"📁","book.closed":"📕","cart":"🛒","building.columns":"🏛️","person.text.rectangle":"🪪","car":"🚗",
+  "heart.text.square":"🩺","house":"🏠","receipt":"🧾","airplane":"✈️","envelope":"✉️","percent":"％","signature":"✍️",
+  "checkmark.shield":"🛡️","doc.text":"📄","tray.full":"🗄️","archivebox":"📦","creditcard":"💳","eurosign.circle":"💶",
+  "banknote":"💶","chart.bar":"📊","briefcase":"💼","graduationcap":"🎓","wrench.and.screwdriver":"🛠️","hammer":"🔨",
+  "bolt":"⚡","drop":"💧","flame":"🔥","phone":"📞","wifi":"📶","tv":"📺","pawprint":"🐾","cross.case":"🩹","pills":"💊",
+  "bicycle":"🚲","bus":"🚌","key":"🔑","lock":"🔒","gift":"🎁","camera":"📷","leaf":"🌿","person.2":"👥","building.2":"🏢",
+  "sportscourt":"🏟️"
+};
+const NAMEN_ALIAS = {"anhaenger":"Anhänger","service_rechnungen":"Service & Reparaturen","reifeneinlagerung":"Reifeneinlagerung",
+  "buchungen":"Buchungen","vabrechnung":"Versicherungsabrechnungen","op-berichte":"OP-Berichte","arztbriefe":"Arztbriefe",
+  "entlassungsberichte":"Entlassungsberichte","arztrechnungen":"Arztrechnungen"};
+
+/* ===================== Hilfsfunktionen ===================== */
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const vergleich = new Intl.Collator("de", {numeric:true, sensitivity:"base"});
+const lsGet = k => { try { return localStorage.getItem(k); } catch(e) { return null; } };
+const lsSet = (k,v) => { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k,v); } catch(e) {} };
+function anzeigeName(name){
+  const ohne = name.replace(/^\d{3}_/, "");
+  return NAMEN_ALIAS[ohne.toLowerCase()] || ohne.replace(/_/g, " ");
+}
+function datumAusName(name){
+  const m = name.match(/(?:^|_)(\d{2})(\d{2})(\d{2})(?:_|\.|$)/);
+  if (!m) return null;
+  const mo = +m[2], t = +m[3];
+  if (mo < 1 || mo > 12 || t < 1 || t > 31) return null;
+  return {key:"20"+m[1]+m[2]+m[3], text:`${m[3]}.${m[2]}.20${m[1]}`};
+}
+function groesse(b){ if (b == null) return ""; if (b < 1024) return b+" B"; if (b < 1048576) return Math.round(b/1024)+" KB";
+  return (b/1048576).toLocaleString("de-DE",{maximumFractionDigits:1})+" MB"; }
+function dropboxDatum(iso){ return iso ? new Date(iso).toLocaleDateString("de-DE") : ""; }
+function headerJson(obj){ // Dropbox-API-Arg muss reines ASCII sein
+  return JSON.stringify(obj).replace(/[\u007f-￿]/g, c => "\\u" + ("000" + c.charCodeAt(0).toString(16)).slice(-4));
+}
+function rel(pathDisplay){ return pathDisplay.replace(/^\//, ""); }
+function oben(pathDisplay){ return rel(pathDisplay).split("/")[0]; }
+
+/* ===================== Anmeldung (OAuth 2 mit PKCE, nur Lesen) ===================== */
+const TOKEN_KEY = "ablage.dropbox.token", PKCE_KEY = "ablage.dropbox.pkce";
+const redirectUri = () => location.origin + location.pathname;
+function zufall(n){ const a = new Uint8Array(n); crypto.getRandomValues(a); return b64url(a); }
+function b64url(bytes){ let s = ""; bytes.forEach(b => s += String.fromCharCode(b));
+  return btoa(s).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,""); }
+async function anmelden(){
+  const verifier = zufall(48), state = zufall(16);
+  const hash = new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(verifier)));
+  lsSet(PKCE_KEY, JSON.stringify({verifier, state}));
+  const q = new URLSearchParams({client_id:APP_KEY, response_type:"code", code_challenge:b64url(hash),
+    code_challenge_method:"S256", redirect_uri:redirectUri(), token_access_type:"offline", state});
+  location.href = "https://www.dropbox.com/oauth2/authorize?" + q;
+}
+async function tokenAnfrage(params){
+  const r = await fetch("https://api.dropboxapi.com/oauth2/token", {method:"POST",
+    headers:{"Content-Type":"application/x-www-form-urlencoded"}, body:new URLSearchParams({...params, client_id:APP_KEY})});
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.error_description || j.error || ("Anmeldung fehlgeschlagen (" + r.status + ")"));
+  return j;
+}
+async function rueckkehrVonDropbox(){
+  const p = new URLSearchParams(location.search);
+  if (!p.has("code") && !p.has("error")) return false;
+  history.replaceState(null, "", redirectUri() + location.hash);
+  if (p.has("error")) throw new Error(p.get("error") === "access_denied" ? "Die Anmeldung wurde abgebrochen." : (p.get("error_description") || p.get("error")));
+  const pk = JSON.parse(lsGet(PKCE_KEY) || "{}"); lsSet(PKCE_KEY, null);
+  if (!pk.verifier || pk.state !== p.get("state")) throw new Error("Die Anmeldung konnte nicht zugeordnet werden. Bitte erneut anmelden.");
+  const j = await tokenAnfrage({grant_type:"authorization_code", code:p.get("code"), code_verifier:pk.verifier, redirect_uri:redirectUri()});
+  speichereToken(j); return true;
+}
+function speichereToken(j){
+  const alt = JSON.parse(lsGet(TOKEN_KEY) || "{}");
+  lsSet(TOKEN_KEY, JSON.stringify({access:j.access_token, refresh:j.refresh_token || alt.refresh, bis:Date.now() + (j.expires_in||14400)*1000 - 60000}));
+}
+const angemeldet = () => DEMO || !!JSON.parse(lsGet(TOKEN_KEY) || "{}").refresh;
+let erneuern = null;
+async function zugang(neu){
+  const t = JSON.parse(lsGet(TOKEN_KEY) || "{}");
+  if (!t.refresh) throw new AnmeldungNoetig();
+  if (!neu && t.access && t.bis > Date.now()) return t.access;
+  if (!erneuern) erneuern = tokenAnfrage({grant_type:"refresh_token", refresh_token:t.refresh})
+    .then(j => { speichereToken(j); return j.access_token; })
+    .catch(e => { if (/invalid_grant|expired|revoked/i.test(e.message)) { lsSet(TOKEN_KEY, null); throw new AnmeldungNoetig(); } throw e; })
+    .finally(() => { erneuern = null; });
+  return erneuern;
+}
+class AnmeldungNoetig extends Error { constructor(){ super("Bitte bei Dropbox anmelden."); } }
+async function abmelden(){
+  const t = JSON.parse(lsGet(TOKEN_KEY) || "{}");
+  if (t.access) fetch("https://api.dropboxapi.com/2/auth/token/revoke", {method:"POST", headers:{Authorization:"Bearer " + t.access}}).catch(()=>{});
+  lsSet(TOKEN_KEY, null); cache.clear(); einstellungen = null; zeige();
+}
+
+/* ===================== Dropbox-Zugriff (nur lesend) ===================== */
+async function dbx(endpoint, body, inhalt){
+  for (let versuch = 0; versuch < 2; versuch++) {
+    const token = await zugang(versuch > 0);
+    const opts = {method:"POST", headers:{Authorization:"Bearer " + token}};
+    if (inhalt) opts.headers["Dropbox-API-Arg"] = headerJson(body);
+    else { opts.headers["Content-Type"] = "application/json"; opts.body = JSON.stringify(body); }
+    const host = inhalt ? "https://content.dropboxapi.com/2/" : "https://api.dropboxapi.com/2/";
+    let r;
+    try { r = await fetch(host + endpoint, opts); }
+    catch(e) { throw new Error("Keine Verbindung zu Dropbox. Bitte Internetverbindung prüfen."); }
+    if (r.status === 401 && versuch === 0) continue;
+    if (r.status === 401) { lsSet(TOKEN_KEY, null); throw new AnmeldungNoetig(); }
+    if (r.status === 429) throw new Error("Dropbox bremst gerade (zu viele Anfragen). Bitte kurz warten.");
+    if (!r.ok) { const txt = await r.text().catch(()=> ""); let msg = txt;
+      try { msg = JSON.parse(txt).error_summary || txt; } catch(e) {}
+      const err = new Error(/not_found/.test(msg) ? "Nicht gefunden: " + (body.path || "") : ("Dropbox-Fehler " + r.status + ": " + msg));
+      err.notFound = /not_found/.test(msg); throw err; }
+    return inhalt ? r.blob() : r.json();
+  }
+}
+const cache = new Map();
+async function ordnerLesen(path, frisch){
+  const key = path.toLowerCase();
+  if (!frisch && cache.has(key)) return cache.get(key);
+  if (DEMO) { const d = demoListe(path); cache.set(key, d); return d; }
+  let j = await dbx("files/list_folder", {path, limit:2000, include_non_downloadable_files:false});
+  let eintraege = j.entries;
+  while (j.has_more) { j = await dbx("files/list_folder/continue", {cursor:j.cursor}); eintraege = eintraege.concat(j.entries); }
+  const liste = eintraege.filter(e => !e.name.startsWith(".") && (e[".tag"] === "folder" || e[".tag"] === "file"));
+  cache.set(key, liste); return liste;
+}
+async function dateiLaden(path){
+  if (DEMO) return new Blob(["%PDF-1.4\n% Demo\n"], {type:"application/pdf"});
+  return dbx("files/download", {path}, true);
+}
+async function temporaererLink(path){
+  if (DEMO) return "#demo";
+  return (await dbx("files/get_temporary_link", {path})).link;
+}
+async function suchen(text){
+  if (DEMO) return demoSuche(text);
+  const j = await dbx("files/search_v2", {query:text, options:{path:"", max_results:200, file_status:"active", filename_only:false}});
+  // 1.0.1: Treffer ohne Pfad (z. B. geteilte, nicht eingebundene Ordner) oder ohne Metadaten überspringen
+  return (j.matches || []).map(m => m && m.metadata && m.metadata.metadata)
+    .filter(e => e && typeof e.path_lower === "string" && typeof e.path_display === "string" && (e[".tag"] === "file" || e[".tag"] === "folder"));
+}
+
+/* ===================== Anzeige-Einstellungen (Anzeige-Namen.json, gemeinsam mit dem Mac) ===================== */
+let einstellungen = null;
+async function einstellungenLaden(){
+  if (einstellungen) return einstellungen;
+  let roh = {};
+  try {
+    const web = DEMO ? DEMO_WEB : JSON.parse(await (await dateiLaden(SOFTWARE_DIR + "/Ablage-Web.json")).text());
+    STANDARD_TITEL = web.titel || {}; STANDARD_LOOK = web.aussehen || {};
+    STANDARD_AUSWAHL = web.auswahl || Object.keys(STANDARD_TITEL);
+  } catch(e) { if (e instanceof AnmeldungNoetig) throw e; console.warn("Ablage-Web.json nicht lesbar", e); }
+  try {
+    const blob = DEMO ? new Blob([JSON.stringify(DEMO_ANZEIGE)]) : await dateiLaden(SOFTWARE_DIR + "/Anzeige-Namen.json");
+    roh = JSON.parse(await blob.text());
+  } catch(e) { if (e instanceof AnmeldungNoetig) throw e; console.warn("Anzeige-Namen.json nicht lesbar", e); }
+  const klein = o => Object.fromEntries(Object.entries(o || {}).map(([k,v]) => [k.toLowerCase(), v]));
+  const include = (roh.ablagen && roh.ablagen.include && roh.ablagen.include.length) ? roh.ablagen.include.slice() : STANDARD_AUSWAHL.slice();
+  const exclude = (roh.ablagen && roh.ablagen.exclude) || [];
+  // 1.1: wie Ablage.app – Hauptordner aus freigegebenen gelernten Ablagen kommen dazu, außer sie sind abgewählt.
+  try {
+    const gelernt = await gelernteOrdner();
+    const gezeigt = new Set(include.map(p => p.toLowerCase())), aus = new Set(exclude.map(p => p.toLowerCase()));
+    gelernt.forEach(p => { if (!gezeigt.has(p.toLowerCase()) && !aus.has(p.toLowerCase())) { include.push(p); gezeigt.add(p.toLowerCase()); } });
+  } catch(e) { if (e instanceof AnmeldungNoetig) throw e; console.warn("gelernte_ablage.csv nicht lesbar", e); }
+  einstellungen = {namen:klein(roh.names), symbole:klein(roh.symbols), farben:klein(roh.colors), ablagen:include,
+    ablagenKlein:include.map(p => p.toLowerCase())};
+  return einstellungen;
+}
+// Semikolon-CSV wie in der Ablage.app (Anführungszeichen, Zeilenumbrüche im Feld)
+function csvZeilen(text){
+  const z = []; let zeile = [], feld = "", q = false;
+  text = text.replace(/^\ufeff/, "");
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (c === '"') { if (q && text[i+1] === '"') { feld += '"'; i++; } else q = !q; }
+    else if (c === ";" && !q) { zeile.push(feld); feld = ""; }
+    else if ((c === "\n" || c === "\r") && !q) { if (c === "\r" && text[i+1] === "\n") i++; zeile.push(feld); z.push(zeile); zeile = []; feld = ""; }
+    else feld += c;
+  }
+  if (feld || zeile.length) { zeile.push(feld); z.push(zeile); }
+  return z;
+}
+async function gelernteOrdner(){
+  if (DEMO) return [];
+  let text;
+  try { text = await (await dateiLaden("/000_sortierordner/004_lernstand/gelernte_ablage.csv")).text(); }
+  catch(e) { if (e instanceof AnmeldungNoetig) throw e; return []; }
+  const z = csvZeilen(text); if (!z.length) return [];
+  const st = z[0].indexOf("status"), zi = z[0].indexOf("target"); if (st < 0 || zi < 0) return [];
+  const proOben = new Map();   // Hauptordner -> Zielpfade
+  z.slice(1).forEach(r => {
+    if (r.length <= Math.max(st, zi) || r[st].trim() !== "freigegeben") return;
+    const pfad = r[zi].trim(), teile = pfad.split("/");
+    if (!pfad || pfad.startsWith("/") || teile.includes("..") || !teile[0]) return;
+    if (teile[0].startsWith("000_") || teile[0].startsWith("001_")) return;
+    if (!proOben.has(teile[0])) proOben.set(teile[0], new Set());
+    proOben.get(teile[0]).add(pfad);
+  });
+  const ergebnis = [];
+  for (const [obenName, pfade] of proOben) {   // nur, wenn ein Ziel tatsächlich existiert (wie Ablage.app)
+    for (const p of pfade) {
+      try { await dbx("files/get_metadata", {path: "/" + p}); ergebnis.push(obenName); break; }
+      catch(e) { if (e instanceof AnmeldungNoetig) throw e; }
+    }
+  }
+  return ergebnis;
+}
+function titel(pathDisplay){
+  const r = rel(pathDisplay), name = r.split("/").pop();
+  const eigen = einstellungen.namen[r.toLowerCase()];
+  if (eigen) return eigen;
+  if (!r.includes("/")) return STANDARD_TITEL[r] || anzeigeName(name);
+  return anzeigeName(name);
+}
+function aussehen(pathDisplay){
+  const r = rel(pathDisplay).toLowerCase(), top = r.split("/")[0], sub = r.includes("/");
+  const std = Object.entries(STANDARD_LOOK).find(([k]) => k.toLowerCase() === top);
+  const farbe = einstellungen.farben[r] || einstellungen.farben[top] || (std ? std[1][1] : "grau");
+  const symbol = einstellungen.symbole[r] || (sub ? "folder" : (std ? std[1][0] : "folder"));
+  return {farbe: PALETTEN[farbe] ? farbe : "grau", symbol: SYMBOLE[symbol] || "📁", sub};
+}
+function imRegal(pathLower){
+  if (typeof pathLower !== "string") return false;
+  const top = pathLower.replace(/^\//, "").split("/")[0];
+  return einstellungen.ablagenKlein.includes(top);
+}
+
+/* ===================== Darstellung ===================== */
+const app = $("#app");
+let sortierung = lsGet("ablage.sort") || "name";
+let blatt = null;   // aktuell geöffnetes Dokument
+
+function ortAusHash(){
+  const h = decodeURIComponent(location.hash.slice(1));
+  if (h.startsWith("suche=")) return {suche: h.slice(6)};
+  return {pfad: h.startsWith("/") ? h : ""};
+}
+function geheZu(pfad){ location.hash = pfad ? encodeURIComponent(pfad).replace(/%2F/g, "/") : ""; }
+
+function kopf(titelText, pfad, sucheText){
+  const teile = [];
+  if (pfad) {
+    const segs = rel(pfad).split("/"); let acc = "";
+    teile.push(`<a href="#">Ablage</a>`);
+    segs.forEach((s, i) => { acc += "/" + s; teile.push(i === segs.length - 1 ? `<span>${esc(titel(acc))}</span>` :
+      `<a href="#${esc(encodeURIComponent(acc).replace(/%2F/g,"/"))}">${esc(titel(acc))}</a>`); });
+  }
+  const zurueck = pfad || sucheText != null;
+  return `<header>
+    <div class="top">
+      ${zurueck ? `<button class="iconbtn" id="zurueck" aria-label="Zurück">‹ Zurück</button>` : ""}
+      <h1>${esc(titelText)}</h1>
+      <button class="iconbtn" id="neu" aria-label="Aktualisieren" title="Aktualisieren">↻</button>
+    </div>
+    ${teile.length ? `<div class="crumbs">${teile.join(" › ")}</div>` : ""}
+    <form class="search" id="suchform"><input id="suchfeld" type="search" enterkeyhint="search" placeholder="Suchen (Name oder Text) …" value="${esc(sucheText || "")}" autocomplete="off"></form>
+  </header>`;
+}
+function verdrahteKopf(pfad){
+  const z = $("#zurueck");
+  if (z) z.onclick = () => geheZu(pfad ? pfad.split("/").slice(0, -1).join("/") : "");
+  $("#neu").onclick = () => { cache.clear(); einstellungen = null; zeige(true); };
+  $("#suchform").onsubmit = ev => { ev.preventDefault(); const t = $("#suchfeld").value.trim();
+    if (t) location.hash = "suche=" + encodeURIComponent(t); $("#suchfeld").blur(); };
+}
+
+function regal(ordner, unter){
+  if (!ordner.length) return "";
+  const breite = Math.min(window.innerWidth, 1100) - 24 - 16;
+  const proReihe = Math.max(3, Math.floor((breite + 6) / 56));
+  let html = `<div class="shelf">`;
+  for (let i = 0; i < ordner.length; i += proReihe) {
+    html += `<div class="row">` + ordner.slice(i, i + proReihe).map(o => {
+      const a = aussehen(o.path_display), p = PALETTEN[a.farbe];
+      const dunkel = matchMedia("(prefers-color-scheme: dark)").matches;
+      const fill = dunkel ? p[1] + "55" : p[0], stroke = p[1], ink = dunkel ? "#f2f0ea" : p[2];
+      return `<div class="spine${unter ? " unter" : ""}" role="button" tabindex="0" data-pfad="${esc(o.path_display)}"
+        style="--fill:${fill};--stroke:${stroke};--ink:${ink}" title="${esc(titel(o.path_display))}">
+        <div class="sym">${a.symbol}</div><div class="lbl">${esc(titel(o.path_display))}</div><div class="ring"></div></div>`;
+    }).join("") + `</div><div class="board"></div>`;
+  }
+  return html + `</div>`;
+}
+function dokumentZeile(e, mitOrt){
+  const ext = (e.name.split(".").pop() || "").toLowerCase();
+  const d = datumAusName(e.name);
+  const info = [d ? d.text : dropboxDatum(e.client_modified || e.server_modified), groesse(e.size)];
+  if (mitOrt) info.unshift(ortText(e.path_display));
+  return `<div class="item" data-datei="${esc(e.path_display)}">
+    <div class="doc${ext === "pdf" ? "" : " other"}">${esc(ext.slice(0,4).toUpperCase())}</div>
+    <div class="meta"><div class="name">${esc(e.name)}</div><div class="sub">${esc(info.filter(Boolean).join(" · "))}</div></div></div>`;
+}
+function ortText(pathDisplay){
+  const segs = rel(pathDisplay).split("/").slice(0, -1); let acc = ""; const t = [];
+  segs.forEach(s => { acc += "/" + s; t.push(titel(acc)); });
+  return t.join(" › ");
+}
+function sortiere(dateien){
+  const k = e => { const d = datumAusName(e.name); return d ? d.key : (e.client_modified || e.server_modified || "").replace(/\D/g,"").slice(0,8); };
+  return sortierung === "datum" ? dateien.slice().sort((a,b) => vergleich.compare(k(b), k(a)) || vergleich.compare(a.name, b.name))
+                                : dateien.slice().sort((a,b) => vergleich.compare(a.name, b.name));
+}
+function fuss(){
+  return `<div class="foot">Ablage Web ${VERSION}${DEMO ? " · Demo" : ""} · nur Ansicht${DEMO ? "" : ` · <button id="abmelden">Abmelden</button>`}</div>`;
+}
+function verdrahteInhalt(){
+  app.querySelectorAll(".spine").forEach(el => { el.onclick = () => geheZu(el.dataset.pfad);
+    el.onkeydown = ev => { if (ev.key === "Enter") geheZu(el.dataset.pfad); }; });
+  app.querySelectorAll("[data-datei]").forEach(el => el.onclick = () => oeffneBlatt(el.dataset.datei));
+  app.querySelectorAll("[data-ordner]").forEach(el => el.onclick = () => geheZu(el.dataset.ordner));
+  app.querySelectorAll(".seg button").forEach(b => b.onclick = () => { sortierung = b.dataset.s; lsSet("ablage.sort", sortierung); zeige(); });
+  const ab = $("#abmelden"); if (ab) ab.onclick = () => { if (confirm("Auf diesem Gerät von Dropbox abmelden?")) abmelden(); };
+}
+function fehlerBox(e){ return `<div class="err">${esc(e.message || String(e))}</div>`; }
+
+let zeigeNr = 0;
+async function zeige(frisch){
+  const nr = ++zeigeNr;
+  schliesseBlatt();
+  if (!DEMO && APP_KEY.startsWith("HIER_")) {
+    app.innerHTML = `<div class="login"><div class="logo">🗄️</div><h2>Ablage</h2><p>Diese Seite ist noch nicht fertig eingerichtet: Der Dropbox-App-Key fehlt in index.html.</p>
+      <p><a href="?demo">Demo ansehen</a></p></div>`; return;
+  }
+  if (!angemeldet()) {
+    app.innerHTML = `<div class="login"><div class="logo">🗄️</div><h2>Ablage</h2>
+      <p>Die abgelegten Dokumente aus der Dropbox ansehen, durchsuchen und teilen. Die Seite kann nichts verändern oder löschen.</p>
+      <button class="primary" id="login">Mit Dropbox anmelden</button>
+      <p style="font-size:13px;margin-top:22px">Auf dem iPhone: zuerst in Safari über <b>Teilen › Zum Home-Bildschirm</b> ablegen, dann über das neue Symbol öffnen und dort anmelden. Die Anmeldung bleibt danach gespeichert.</p>
+      <div id="loginfehler"></div></div>`;
+    $("#login").onclick = () => anmelden().catch(e => $("#loginfehler").innerHTML = fehlerBox(e));
+    return;
+  }
+  const ort = ortAusHash();
+  app.innerHTML = kopf(ort.suche != null ? "Suche" : "Ablage", ort.pfad, ort.suche) + `<main><div class="loading"><span class="spinner"></span> Lädt …</div></main>`;
+  verdrahteKopf(ort.pfad);
+  try {
+    await einstellungenLaden();
+    if (nr !== zeigeNr) return;
+    if (ort.suche != null) return await zeigeSuche(ort.suche, nr);
+    if (!ort.pfad) return await zeigeStart(nr, frisch);
+    return await zeigeOrdner(ort.pfad, nr, frisch);
+  } catch(e) {
+    if (nr !== zeigeNr) return;
+    if (e instanceof AnmeldungNoetig) { zeige(); return; }
+    app.querySelector("main").innerHTML = fehlerBox(e) + (ort.pfad ? `<p class="note"><a href="#">Zur Übersicht</a></p>` : "") + fuss();
+    verdrahteInhalt();
+  }
+}
+async function zeigeStart(nr){
+  const ordner = einstellungen.ablagen.map(p => ({path_display: "/" + p, name: p}))
+    .sort((a,b) => vergleich.compare(titel(a.path_display), titel(b.path_display)));
+  app.querySelector("main").innerHTML = `<div class="section">Ablagen</div>` + regal(ordner, false) + fuss();
+  verdrahteInhalt();
+}
+async function zeigeOrdner(pfad, nr, frisch){
+  let liste;
+  try { liste = await ordnerLesen(pfad, frisch); }
+  catch(e) { if (e.notFound) throw new Error("Diesen Ordner gibt es in der Dropbox nicht (mehr): " + titel(pfad)); throw e; }
+  if (nr !== zeigeNr) return;
+  // Kopf mit richtiger Groß-/Kleinschreibung neu aufbauen
+  app.querySelector("header").outerHTML = kopf(titel(pfad), pfad);
+  verdrahteKopf(pfad);
+  const ordner = liste.filter(e => e[".tag"] === "folder").sort((a,b) => vergleich.compare(titel(a.path_display), titel(b.path_display)));
+  const dateien = sortiere(liste.filter(e => e[".tag"] === "file"));
+  let html = "";
+  if (ordner.length) html += `<div class="section">Ordner</div>` + regal(ordner, true);
+  if (dateien.length) html += `<div class="toolbar"><div class="section">${dateien.length} ${dateien.length === 1 ? "Dokument" : "Dokumente"}</div>
+      <div class="seg"><button data-s="name" class="${sortierung === "name" ? "on" : ""}">A–Z</button><button data-s="datum" class="${sortierung === "datum" ? "on" : ""}">Neueste</button></div></div>
+      <div class="list">${dateien.map(e => dokumentZeile(e)).join("")}</div>`;
+  if (!ordner.length && !dateien.length) html = `<div class="empty">Dieser Ordner ist leer.</div>`;
+  app.querySelector("main").innerHTML = html + fuss();
+  verdrahteInhalt();
+}
+async function zeigeSuche(text, nr){
+  const roh = await suchen(text);
+  if (nr !== zeigeNr) return;
+  const treffer = roh.filter(m => imRegal(m.path_lower));
+  const ordner = treffer.filter(m => m[".tag"] === "folder");
+  const dateien = treffer.filter(m => m[".tag"] === "file");
+  let html = "";
+  if (ordner.length) html += `<div class="section">Ordner</div><div class="list">` + ordner.map(o =>
+    `<div class="item" data-ordner="${esc(o.path_display)}"><div class="folderico">${aussehen(o.path_display).symbol}</div>
+      <div class="meta"><div class="name">${esc(titel(o.path_display))}</div><div class="sub">${esc(ortText(o.path_display) || "Ablage")}</div></div><div class="chev">›</div></div>`).join("") + `</div>`;
+  if (dateien.length) html += `<div class="section">${dateien.length} ${dateien.length === 1 ? "Dokument" : "Dokumente"}</div>
+      <div class="list">${dateien.map(e => dokumentZeile(e, true)).join("")}</div>`;
+  if (!treffer.length) html = `<div class="empty">Nichts gefunden zu „${esc(text)}“.</div>`;
+  if (roh.length >= 200) html += `<p class="note">Es gibt mehr Treffer, als angezeigt werden. Bitte die Suche genauer fassen.</p>`;
+  app.querySelector("main").innerHTML = html + fuss();
+  verdrahteInhalt();
+}
+
+/* ===================== Dokument-Blatt: Ansehen, Teilen, Ort ===================== */
+let blattNr = 0;
+async function oeffneBlatt(pfad){
+  schliesseBlatt();
+  const name = pfad.split("/").pop(), d = datumAusName(name), auf = ++blattNr;
+  blatt = {pfad, datei:null, nr:auf};
+  const kannTeilen = !!navigator.share;
+  const veil = document.createElement("div"); veil.className = "veil"; veil.onclick = schliesseBlatt;
+  const s = document.createElement("div"); s.className = "sheet"; s.setAttribute("role", "dialog");
+  s.innerHTML = `<div class="grab"></div><h3>${esc(name)}</h3>
+    <div class="sub">${esc(ortText(pfad))}${d ? " · " + d.text : ""}</div>
+    <div class="actions">
+      <a class="primary" id="ansehen" aria-disabled="true" target="_blank" rel="noopener noreferrer">Ansehen <span class="spinner"></span></a>
+      ${kannTeilen ? `<button class="secondary" id="teilen" aria-disabled="true">Teilen <span class="spinner"></span></button>`
+                   : `<a class="secondary" id="sichern" aria-disabled="true">Sichern <span class="spinner"></span></a>`}
+      <button class="secondary wide" id="imordner">Im Ordner zeigen</button>
+    </div><div id="blattfehler"></div>`;
+  document.body.append(veil, s); blatt.el = [veil, s];
+  $("#imordner").onclick = () => { const p = pfad.split("/").slice(0, -1).join("/"); schliesseBlatt(); geheZu(p); };
+  const zustand = (el, txt) => { if (!el) return; el.textContent = txt; el.setAttribute("aria-disabled", "false"); };
+  // Vorladen: Link für die PDF-Ansicht von Safari und die Datei selbst zum Teilen (Teilen muss direkt auf den Tipp reagieren)
+  temporaererLink(pfad).then(link => { if (blatt && blatt.nr === auf) { const a = $("#ansehen"); a.href = link; zustand(a, "Ansehen");
+      if (DEMO) a.onclick = ev => { ev.preventDefault(); alert("Demo: Hier öffnet sich das PDF."); }; } })
+    .catch(e => { if (blatt && blatt.nr === auf) $("#blattfehler").innerHTML = fehlerBox(e); });
+  dateiLaden(pfad).then(blob => {
+    if (!blatt || blatt.nr !== auf) return;
+    const typ = /\.pdf$/i.test(name) ? "application/pdf" : (blob.type || "application/octet-stream");
+    blatt.datei = new File([blob], name, {type:typ});
+    const t = $("#teilen");
+    if (t) { zustand(t, "Teilen"); t.onclick = () => teilen(); }
+    const sv = $("#sichern");
+    if (sv) { sv.href = URL.createObjectURL(blatt.datei); sv.download = name; zustand(sv, "Sichern"); }
+  }).catch(e => { if (blatt && blatt.nr === auf) $("#blattfehler").innerHTML = fehlerBox(e); });
+}
+function teilen(){
+  if (!blatt || !blatt.datei) return;
+  const daten = {files:[blatt.datei], title:blatt.datei.name};
+  if (navigator.canShare && !navigator.canShare(daten)) { $("#blattfehler").innerHTML = fehlerBox(new Error("Dieses Gerät kann die Datei nicht teilen.")); return; }
+  navigator.share(daten).catch(e => { if (e.name !== "AbortError") $("#blattfehler").innerHTML = fehlerBox(e); });
+}
+function schliesseBlatt(){
+  if (!blatt) return;
+  (blatt.el || []).forEach(el => el.remove());
+  const sv = document.getElementById("sichern"); if (sv && sv.href.startsWith("blob:")) URL.revokeObjectURL(sv.href);
+  blatt = null;
+}
+document.addEventListener("keydown", ev => { if (ev.key === "Escape") schliesseBlatt(); });
+
+/* ===================== Demo-Daten (nur mit ?demo) ===================== */
+const DEMO_WEB = {titel:{"010_haus":"Haus","020_auto":"Auto","030_rechnungen":"Rechnungen","040_vertraege":"Verträge",
+  "050_versicherungen":"Versicherungen","060_reisen":"Reisen","070_gesundheit":"Gesundheit","080_bank":"Bank"},
+  aussehen:{"010_haus":["house","rotbraun"],"020_auto":["car","blau"],"030_rechnungen":["receipt","petrol"],
+  "040_vertraege":["signature","rotbraun"],"050_versicherungen":["checkmark.shield","petrol"],"060_reisen":["airplane","blau"],
+  "070_gesundheit":["heart.text.square","rot"],"080_bank":["building.columns","gelb"]}};
+const DEMO_ANZEIGE = {ablagen:{include:["010_haus","020_auto","030_rechnungen","040_vertraege","050_versicherungen",
+  "060_reisen","070_gesundheit","080_bank","090_tickets"]},
+  colors:{"090_tickets":"gelb"}, symbols:{"090_tickets":"receipt"},
+  names:{"090_tickets":"Tickets","020_auto/kombi":"Familienkombi","030_rechnungen/online":"Online-Shop"}};
+const DEMO_BAUM = {
+  "/020_auto":["kombi/","fahrrad/"],
+  "/020_auto/kombi":["service_rechnungen/","reifeneinlagerung/","reifeneinl_Kombi_251006_Reifenhaus.pdf","versich_Kombi_250101_Musterversicherung.pdf"],
+  "/020_auto/kombi/reifeneinlagerung":["reifeneinl_Kombi_241012_Reifenhaus.pdf","reifeneinl_Kombi_250408_Reifenhaus.pdf"],
+  "/030_rechnungen":["online/","ab/","rech_250912_Malerbetrieb.pdf","rech_261101_Stadtwerk.pdf","zahlbeleg_261120_Online-Shop.pdf"],
+  "/030_rechnungen/online":["rech_261123_Online-Shop.pdf","rech_261015_Online-Shop.pdf"],
+  "/090_tickets":["ticket_261205_Konzerthaus.pdf"]
+};
+function demoEintrag(pfad, n){ const ordner = n.endsWith("/"); n = n.replace(/\/$/, ""); const p = pfad + "/" + n;
+  return {".tag": ordner ? "folder" : "file", name:n, path_display:p, path_lower:p.toLowerCase(), size: ordner ? undefined : 80000 + n.length * 9000,
+    server_modified:"2026-11-20T10:00:00Z"}; }
+function demoListe(pfad){ const k = Object.keys(DEMO_BAUM).find(x => x.toLowerCase() === pfad.toLowerCase());
+  return (k ? DEMO_BAUM[k] : []).map(n => demoEintrag(k || pfad, n)); }
+function demoSuche(t){ const alle = []; Object.entries(DEMO_BAUM).forEach(([p, l]) => l.forEach(n => alle.push(demoEintrag(p, n))));
+  return alle.filter(e => e.name.toLowerCase().includes(t.toLowerCase())); }
+
+/* ===================== Start ===================== */
+window.addEventListener("hashchange", () => zeige());
+let breiteAlt = window.innerWidth;
+window.addEventListener("resize", () => { if (Math.abs(window.innerWidth - breiteAlt) > 40) { breiteAlt = window.innerWidth; if (!blatt) zeige(); } });
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { if (!blatt) zeige(); });
+(async () => {
+  try { await rueckkehrVonDropbox(); }
+  catch(e) { app.innerHTML = `<div class="login"><div class="logo">🗄️</div><h2>Ablage</h2>${fehlerBox(e)}<button class="primary" id="login">Erneut anmelden</button></div>`;
+    $("#login").onclick = () => anmelden(); return; }
+  zeige();
+})();
+</script>
+</body>
+</html>
